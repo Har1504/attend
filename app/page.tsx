@@ -1,95 +1,43 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+// app/page.tsx
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from './api/auth/[...nextauth]/route';
+import Link from 'next/link';
 
-export default function Home() {
+export default async function RootRedirect() {
+  const session = await getServerSession(authOptions);
+
+  if (session?.user?.email === 'admin@attendpro.com') {
+    redirect('/admin');
+  } else if (session?.user?.email === 'user@attendpro.com') {
+    redirect('/user');
+  }
+
+  // Attractive landing UI for unauthenticated users
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+    <main className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 flex items-center justify-center">
+      <div className="bg-white/90 rounded-2xl shadow-2xl p-10 max-w-xl w-full text-center">
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Welcome to <span className="text-indigo-700">AttendPro</span></h1>
+        <p className="text-lg text-gray-700 mb-8">
+          Effortless attendance tracking for your organization.<br />
+          Secure, fast, and easy to use.
+        </p>
+        <Link
+          href="/signin"
+          className="inline-block bg-indigo-700 hover:bg-indigo-800 text-white font-semibold px-8 py-3 rounded-lg shadow transition"
+        >
+          Get Started
+        </Link>
+        <div className="mt-8 flex flex-col items-center gap-2">
+          <span className="text-gray-500 text-sm">Demo accounts:</span>
+          <div className="text-xs text-gray-600">
+            <span className="font-medium">Admin:</span> admin@attendpro.com
+          </div>
+          <div className="text-xs text-gray-600">
+            <span className="font-medium">User:</span> user@attendpro.com
+          </div>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </div>
+    </main>
   );
 }
