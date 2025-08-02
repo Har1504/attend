@@ -3,6 +3,7 @@
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -18,7 +19,11 @@ export default function SignInPage() {
     });
 
     if (res?.ok) {
-      router.push('/admin'); // or wherever the dashboard is
+      if (email === 'admin@attendpro.com') {
+        router.push('/admin');
+      } else {
+        router.push('/user');
+      }
     } else {
       alert('Invalid credentials');
     }
@@ -44,6 +49,12 @@ export default function SignInPage() {
           Sign In
         </button>
       </form>
+      <p className="mt-4">
+        Don't have an account?{' '}
+        <Link href="/signup" className="text-blue-600 hover:underline">
+          Sign Up
+        </Link>
+      </p>
     </main>
   );
 }

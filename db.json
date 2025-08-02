@@ -1,0 +1,27 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "email": "admin@attendpro.com",
+      "password": "$2b$10$yunfiZ5uaMczwJKI6QcVTOmt61jC0bm5CTGd1aZiU2awEnsaeRbmy"
+    },
+    {
+      "id": "2",
+      "email": "user@attendpro.com",
+      "password": "$2b$10$PhQNB8f.uYjVCo1FBfL2PeOC.mxVovhTRWlG3ebxxNyX8PUnvu/C."
+    },
+    {
+      "id": "3",
+      "email": "samandresson36@gmail.com",
+      "password": "$2b$10$/zMHyBzaIgjxirAPqik9b.SVPJEQ2mln/w7AQZJ5I2otG5/6bKv8q"
+    }
+  ],
+  "attendanceRecords": [
+    {
+      "email": "samandresson36@gmail.com",
+      "date": "2025-08-02",
+      "clockIn": "2025-08-02T21:55:07.308Z",
+      "clockOut": "2025-08-02T21:56:11.406Z"
+    }
+  ]
+}
