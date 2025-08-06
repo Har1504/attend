@@ -1,26 +1,41 @@
 // app/api/admin/stats/route.ts
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-import { users, attendanceRecords } from '@/lib/store';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getTodaysDate } from '@/lib/utils';
+import { checkAdmin } from '@/lib/auth';
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.email !== 'admin@attendpro.com') {
+  if (!await checkAdmin()) {
     return NextResponse.json({ message: 'Not authorized' }, { status: 403 });
   }
 
-  const today = new Date().toISOString().split('T')[0];
-  const todaysCheckIns = attendanceRecords.filter(
-    (r) => r.date === today && r.clockIn
-  ).length;
+  const today = getTodaysDate();
 
-  const totalUsers = users.length;
-  const absentUsers = totalUsers - todaysCheckIns;
+  const usersSnapshot = await getDocs(collection(db, 'users'));
+  const totalUsers = usersSnapshot.size;
+
+  const attendanceQuery = query(collection(db, 'attendance'), where('date', '==', today));
+  const attendanceSnapshot = await getDocs(attendanceQuery);
+
+  let presentToday = 0;
+  let onLeaveToday = 0;
+
+  attendanceSnapshot.forEach(doc => {
+    const data = doc.data();
+    if (data.status === 'present') {
+      presentToday++;
+    } else if (data.status === 'leave') {
+      onLeaveToday++;
+    }
+  });
+
+  const absentToday = totalUsers - presentToday - onLeaveToday;
 
   return NextResponse.json({
     totalUsers,
-    todaysCheckIns,
-    absentUsers,
+    presentToday,
+    absentToday,
+    onLeaveToday,
   });
 }

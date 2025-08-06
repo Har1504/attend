@@ -1,35 +1,35 @@
 // app/api/auth/signup/route.ts
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
-import { users, saveData } from '@/lib/store';
+import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, name } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ message: 'Email and password are required' }, { status: 400 });
+    if (!email || !password || !name) {
+      return NextResponse.json({ message: 'Email, password, and name are required' }, { status: 400 });
     }
 
-    const userExists = users.find((user) => user.email === email);
-    if (userExists) {
-      return NextResponse.json({ message: 'User already exists' }, { status: 409 });
-    }
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = { id: String(users.length + 1), email, password: hashedPassword };
-
-    // Add the new user to the array and save the entire data object
-    const updatedData = {
-      users: [...users, newUser],
-      attendanceRecords: (await import('@/lib/store')).attendanceRecords // get the latest records
-    };
-    saveData(updatedData);
-
+    // Add user to Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      name: name,
+      email: email,
+      role: "member", // default role
+      created_at: new Date().toISOString(),
+    });
 
     return NextResponse.json({ message: 'User created successfully' }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
+    // Handle Firebase errors
+    if (error.code === 'auth/email-already-in-use') {
+      return NextResponse.json({ message: 'User already exists' }, { status: 409 });
+    }
     return NextResponse.json({ message: 'An unexpected error occurred' }, { status: 500 });
   }
 }

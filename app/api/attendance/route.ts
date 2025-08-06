@@ -2,51 +2,54 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
-import { users, attendanceRecords, saveData } from '@/lib/store';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { getTodaysDate } from '@/lib/utils';
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
   }
 
   const { action } = await req.json();
-  const userEmail = session.user.email;
+  const userId = session.user.id;
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
+  const today = getTodaysDate();
 
-  const recordIndex = attendanceRecords.findIndex(
-    (r) => r.email === userEmail && r.date === today
-  );
+  const attendanceCollection = collection(db, 'attendance');
+  const q = query(attendanceCollection, where('user_id', '==', userId), where('date', '==', today));
+  const querySnapshot = await getDocs(q);
 
   if (action === 'clock-in') {
-    if (recordIndex > -1 && attendanceRecords[recordIndex].clockIn) {
-      return NextResponse.json({ message: 'Already clocked in today' }, { status: 400 });
+    if (!querySnapshot.empty) {
+      const docData = querySnapshot.docs[0].data();
+      if (docData.check_in) {
+        return NextResponse.json({ message: 'Already clocked in today' }, { status: 400 });
+      }
     }
     
-    if (recordIndex > -1) {
-      attendanceRecords[recordIndex].clockIn = now.toISOString();
-    } else {
-      attendanceRecords.push({
-        email: userEmail,
-        date: today,
-        clockIn: now.toISOString(),
-        clockOut: null,
-      });
-    }
-    saveData({ users, attendanceRecords });
+    await addDoc(attendanceCollection, {
+      user_id: userId,
+      date: today,
+      check_in: now.toISOString(),
+      check_out: null,
+      status: 'present',
+    });
     return NextResponse.json({ message: 'Clocked in successfully' });
   }
 
   if (action === 'clock-out') {
-    if (recordIndex === -1 || !attendanceRecords[recordIndex].clockIn) {
+    if (querySnapshot.empty) {
       return NextResponse.json({ message: 'You have not clocked in yet' }, { status: 400 });
     }
-    if (attendanceRecords[recordIndex].clockOut) {
+    const docToUpdate = querySnapshot.docs[0];
+    if (docToUpdate.data().check_out) {
       return NextResponse.json({ message: 'Already clocked out today' }, { status: 400 });
     }
-    attendanceRecords[recordIndex].clockOut = now.toISOString();
-    saveData({ users, attendanceRecords });
+    await updateDoc(doc(db, 'attendance', docToUpdate.id), {
+      check_out: now.toISOString(),
+    });
     return NextResponse.json({ message: 'Clocked out successfully' });
   }
 
@@ -55,12 +58,16 @@ export async function POST(req: Request) {
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
   }
 
-  const userEmail = session.user.email;
-  const userRecords = attendanceRecords.filter((r) => r.email === userEmail);
+  const userId = session.user.id;
+  const attendanceCollection = collection(db, 'attendance');
+  const q = query(attendanceCollection, where('user_id', '==', userId));
+  const querySnapshot = await getDocs(q);
+
+  const userRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
   return NextResponse.json(userRecords);
 }

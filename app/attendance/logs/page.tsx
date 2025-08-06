@@ -1,65 +1,66 @@
 // app/attendance/logs/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import Navbar from '../../components/Navbar';
+import { useQuery } from '@tanstack/react-query';
+import { DataTable } from './data-table';
+import { columns, AttendanceLog } from './columns';
+import { Button } from '@/components/ui/button';
+import { saveAs } from 'file-saver';
+import { DataTableSkeleton } from '@/components/DataTableSkeleton';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
 
-interface Log {
-  date: string;
-  clockIn: string | null;
-  clockOut: string | null;
+async function getAttendanceLogs(): Promise<AttendanceLog[]> {
+  const res = await fetch('/api/attendance');
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || 'Failed to fetch attendance logs');
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
 }
 
 export default function LogsPage() {
-  const [logs, setLogs] = useState<Log[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: logs, isLoading, error } = useQuery<AttendanceLog[], Error> ({
+    queryKey: ['attendanceLogs'],
+    queryFn: getAttendanceLogs,
+  });
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const res = await fetch('/api/attendance');
-        const data = await res.json();
-        if (!res.ok) throw new Error('Failed to fetch logs');
-        setLogs(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLogs();
-  }, []);
+  const exportToCsv = () => {
+    if (!logs) return;
+
+    const headers = ["Date", "Status", "Check In", "Check Out"];
+    const csvRows = [
+      headers.join(','),
+      ...logs.map(log => [log.date, log.status, log.check_in, log.check_out].join(','))
+    ];
+    
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, 'attendance_logs.csv');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-10">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">My Attendance Logs</h1>
+          <Button disabled>Export to CSV</Button>
+        </div>
+        <DataTableSkeleton columns={columns.length} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <ErrorDisplay message={error.message} />;
+  }
 
   return (
-    <>
-      <Navbar />
-      <main className="flex flex-col items-center min-h-screen p-4">
-        <div className="bg-white p-8 rounded shadow-md w-full max-w-4xl">
-          <h1 className="text-3xl font-bold mb-6">My Attendance Logs</h1>
-          {loading ? (
-            <p>Loading...</p>
-          ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr>
-                  <th className="border-b p-4">Date</th>
-                  <th className="border-b p-4">Clock In</th>
-                  <th className="border-b p-4">Clock Out</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr key={log.date}>
-                    <td className="border-b p-4">{log.date}</td>
-                    <td className="border-b p-4">{log.clockIn ? new Date(log.clockIn).toLocaleTimeString() : 'N/A'}</td>
-                    <td className="border-b p-4">{log.clockOut ? new Date(log.clockOut).toLocaleTimeString() : 'N/A'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </main>
-    </>
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">My Attendance Logs</h1>
+        <Button onClick={exportToCsv} disabled={!logs || logs.length === 0}>Export to CSV</Button>
+      </div>
+      <DataTable columns={columns} data={logs || []} />
+    </div>
   );
 }

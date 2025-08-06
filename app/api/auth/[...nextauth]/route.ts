@@ -1,22 +1,9 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
-import fs from 'fs';
-import path from 'path';
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
-const dbPath = path.join(process.cwd(), 'db.json');
-
-const readUsers = () => {
-  try {
-    const jsonString = fs.readFileSync(dbPath, 'utf-8');
-    return JSON.parse(jsonString).users;
-  } catch (error) {
-    console.error("Failed to read or parse db.json", error);
-    return [];
-  }
-};
-
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -25,14 +12,28 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const users = readUsers(); // Read the latest user data on every login attempt
-        const user = users.find((u: any) => u.email === credentials?.email);
-        
-        if (user && credentials?.password && await bcrypt.compare(credentials.password, user.password)) {
-          return { id: user.id, email: user.email };
+        if (!credentials?.email || !credentials?.password) {
+          return null;
         }
-        
-        return null;
+
+        try {
+          const userCredential = await signInWithEmailAndPassword(
+            auth,
+            credentials.email,
+            credentials.password
+          );
+
+          if (userCredential.user) {
+            return {
+              id: userCredential.user.uid,
+              email: userCredential.user.email,
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error("Firebase auth error:", error);
+          return null;
+        }
       },
     }),
   ],
@@ -42,6 +43,8 @@ const handler = NextAuth({
   pages: {
     signIn: "/signin",
   },
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

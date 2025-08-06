@@ -1,8 +1,11 @@
 // app/layout.tsx
 import './globals.css';
-import Navbar from './components/Navbar';
 import { Inter } from 'next/font/google';
-import SessionProvider from './components/SessionProvider';
+import SessionProvider from '@/components/SessionProvider';
+import { Sidebar } from '@/components/Sidebar';
+import { QueryProvider } from '@/components/QueryProvider';
+import Navbar from '@/components/Navbar';
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -20,7 +23,16 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <SessionProvider>
-          {children}
+          <QueryProvider>
+            <div className="flex h-full">
+              <Sidebar />
+              <main className="flex-1 h-full pl-60">
+                <Navbar />
+                {children}
+              </main>
+            </div>
+            <Toaster />
+          </QueryProvider>
         </SessionProvider>
       </body>
     </html>
